@@ -10,6 +10,7 @@ import java.util.UUID;
 public interface DigitalCertificateRepository {
     DigitalCertificateEntity save(DigitalCertificateEntity certificate);
     Optional<DigitalCertificateEntity> findById(UUID id);
+    Optional<DigitalCertificateEntity> findByTenantId(UUID tenantId);
     Page<DigitalCertificateEntity> findAll(Pageable pageable);
     void deleteById(UUID id);
 }

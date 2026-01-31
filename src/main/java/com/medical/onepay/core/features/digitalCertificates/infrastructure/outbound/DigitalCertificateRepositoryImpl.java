@@ -27,6 +27,11 @@ public class DigitalCertificateRepositoryImpl implements DigitalCertificateRepos
     }
 
     @Override
+    public Optional<DigitalCertificateEntity> findByTenantId(UUID tenantId) {
+        return jpaRepository.findByTenantId(tenantId);
+    }
+
+    @Override
     public Page<DigitalCertificateEntity> findAll(Pageable pageable) {
         return jpaRepository.findAllByActiveTrue(pageable);
     }
