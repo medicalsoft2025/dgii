@@ -11,7 +11,7 @@ import com.medical.onepay.core.features.auth.application.usecase.GetTokenDgiiUse
 import com.medical.onepay.core.features.digitalCertificates.domain.model.DigitalCertificateEntity;
 import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;
 import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePort;
-import com.medical.onepay.core.features.invoice.application.ports.EnviarFacturaPort;
+import com.medical.onepay.core.features.invoice.application.ports.InvoiceSenderStrategy;
 import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
 import com.medical.onepay.core.features.invoiceaudit.application.usecase.CreateInvoiceAuditUseCase;
 import com.medical.onepay.shared.tenant.TenantContext;
@@ -29,7 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
-public abstract class AbstractSendInvoiceUseCase implements EnviarFacturaPort {
+public abstract class AbstractSendInvoiceUseCase implements InvoiceSenderStrategy {
 
     protected final DigitalCertificateRepository digitalCertificateRepository;
     protected final XmlSignerAdapter xmlSignerAdapter;

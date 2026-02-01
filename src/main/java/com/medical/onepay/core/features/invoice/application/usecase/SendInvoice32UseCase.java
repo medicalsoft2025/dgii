@@ -12,7 +12,7 @@ import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePor
 import com.medical.onepay.core.features.invoiceaudit.application.usecase.CreateInvoiceAuditUseCase;
 import org.springframework.stereotype.Service;
 
-@Service
+@Service("sendInvoice32Strategy")
 public class SendInvoice32UseCase extends AbstractSendInvoiceUseCase {
 
     public SendInvoice32UseCase(
@@ -41,5 +41,10 @@ public class SendInvoice32UseCase extends AbstractSendInvoiceUseCase {
     @Override
     protected String getXsdPath() {
         return "classpath:xsd/ecf32/e-CF 32 v.1.0.xsd";
+    }
+
+    @Override
+    public String getStrategyName() {
+        return "32";
     }
 }
