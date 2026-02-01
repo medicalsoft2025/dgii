@@ -7,7 +7,6 @@ import com.medical.onepay.core.common.infrastructure.crypto.XmlSignerAdapter;
 import com.medical.onepay.core.features.digitalCertificates.domain.model.DigitalCertificateEntity;
 import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -29,7 +28,6 @@ import com.medical.onepay.config.dgii.DgiiApiProperties;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class GetTokenDgiiUseCase implements DgiiAuthPort {
 
     private final DgiiApiProperties dgiiApiProperties;
@@ -40,14 +38,18 @@ public class GetTokenDgiiUseCase implements DgiiAuthPort {
     @Override
     public DgiiTokenResponse obtenerToken(UUID tenantId) {
         try (HttpClient client = HttpClient.newHttpClient()) {
+
             // 0. Obtener certificado digital
             DigitalCertificateEntity certificate = digitalCertificatedRepository.findByTenantId(tenantId)
                     .orElseThrow(() -> new RuntimeException("No se encontró el certificado para el tenant: " + tenantId));
 
+            if (certificate.getCertificateData() == null || certificate.getCertificateData().length == 0) {
+                throw new RuntimeException("El certificado está vacío para este tenant: " + tenantId);
+            }
+
             // 1. Obtener semilla
             URI urlSemilla = URI.create(dgiiApiProperties.getBaseUrl())
                     .resolve(dgiiApiProperties.getEndpoints().getAuth().getSeed());
-
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(urlSemilla)
                     .GET()
@@ -66,13 +68,21 @@ public class GetTokenDgiiUseCase implements DgiiAuthPort {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(respuestaTokenXml);
 
+            JsonNode tokenNode = jsonNode.get("token");
+            JsonNode expedidoNode = jsonNode.get("expedido");
+            JsonNode expiraNode = jsonNode.get("expira");
+
+            if (tokenNode == null || expedidoNode == null || expiraNode == null) {
+                throw new RuntimeException("DGII no devolvió token válido. Respuesta completa: " + respuestaTokenXml);
+            }
+
             return new DgiiTokenResponse(
-                    jsonNode.get("token").asText(""),
-                    ZonedDateTime.parse(jsonNode.get("expedido").asText("")),
-                    ZonedDateTime.parse(jsonNode.get("expira").asText("")));
+                    tokenNode.asText(),
+                    ZonedDateTime.parse(expedidoNode.asText()),
+                    ZonedDateTime.parse(expiraNode.asText())
+            );
 
         } catch (Exception e) {
-            log.error("Error en el flujo de autenticación con DGII", e);
             throw new RuntimeException("No se pudo obtener el token", e);
         }
     }
@@ -81,7 +91,6 @@ public class GetTokenDgiiUseCase implements DgiiAuthPort {
         try (InputStream certStream = new ByteArrayInputStream(certBytes)) {
             return xmlSignerAdapter.sign(semillaXml, certStream, certPassword);
         } catch (Exception e) {
-            log.error("Error firmando la semilla", e);
             throw new RuntimeException("No se pudo firmar la semilla", e);
         }
     }
@@ -98,18 +107,13 @@ public class GetTokenDgiiUseCase implements DgiiAuthPort {
             String url = dgiiApiProperties.getBaseUrl() +
                     dgiiApiProperties.getEndpoints().getAuth().getValidate();
 
-            String respuesta = dgiiHttpClientAdapter.sendSignedXml(tempFile, url, null);
-            log.info("Respuesta validación semilla:\n{}", respuesta);
-            return respuesta;
+            return dgiiHttpClientAdapter.sendSignedXml(tempFile, url, null);
 
         } catch (Exception e) {
-            log.error("Error al validar la semilla", e);
             throw new RuntimeException("No se pudo validar la semilla", e);
         } finally {
             if (tempFile != null && tempFile.exists()) {
-                if (!tempFile.delete()) {
-                    log.warn("No se pudo eliminar archivo temporal: {}", tempFile.getAbsolutePath());
-                }
+                tempFile.delete();
             }
         }
     }

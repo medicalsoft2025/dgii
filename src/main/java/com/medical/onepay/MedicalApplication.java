@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MedicalApplication {
 
 	public static void main(String[] args) {
+        System.setProperty("javax.xml.parsers.SAXParserFactory", "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl");
 		SpringApplication.run(MedicalApplication.class, args);
 	}
 

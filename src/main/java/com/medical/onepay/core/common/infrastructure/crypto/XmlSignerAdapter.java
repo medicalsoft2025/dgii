@@ -1,9 +1,21 @@
 package com.medical.onepay.core.common.infrastructure.crypto;
 
+import org.springframework.stereotype.Component;
+import org.w3c.dom.Element;
+import oracle.xml.parser.v2.DOMParser;
+import oracle.xml.parser.v2.XMLDocument;
+
+import javax.xml.crypto.dsig.*;
+import javax.xml.crypto.dsig.dom.DOMSignContext;
+import javax.xml.crypto.dsig.keyinfo.*;
+import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
+import javax.xml.crypto.dsig.spec.TransformParameterSpec;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.io.Serializable;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
@@ -11,46 +23,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.xml.crypto.dsig.CanonicalizationMethod;
-import javax.xml.crypto.dsig.DigestMethod;
-import javax.xml.crypto.dsig.Reference;
-import javax.xml.crypto.dsig.SignedInfo;
-import javax.xml.crypto.dsig.Transform;
-import javax.xml.crypto.dsig.XMLSignature;
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.crypto.dsig.dom.DOMSignContext;
-import javax.xml.crypto.dsig.keyinfo.KeyInfo;
-import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
-import javax.xml.crypto.dsig.keyinfo.X509Data;
-import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
-import javax.xml.crypto.dsig.spec.TransformParameterSpec;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
-import com.medical.onepay.core.common.application.ports.out.XmlSignerPort;
-import org.springframework.stereotype.Component;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.xml.sax.InputSource;
-
-
 @Component
-public class XmlSignerAdapter implements XmlSignerPort {
+public class XmlSignerAdapter {
 
-    private static final String SIGNATURE_METHOD =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+    private static final String SIGNATURE_METHOD = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
 
-    @Override
+    /**
+     * Firma un documento XML utilizando el método requerido por la DGII,
+     * que depende del DOMParser de Oracle.
+     *
+     * @param xml          El string del XML a firmar.
+     * @param certStream   Un InputStream del certificado P12.
+     * @param certPassword La contraseña del certificado.
+     * @return El XML firmado como un String.
+     * @throws Exception Si ocurre un error durante el proceso de firma.
+     */
     public String sign(String xml, InputStream certStream, String certPassword) throws Exception {
-
-        Document document = parseXml(xml);
 
         XMLSignatureFactory fac = XMLSignatureFactory.getInstance("DOM");
 
@@ -73,65 +61,43 @@ public class XmlSignerAdapter implements XmlSignerPort {
                 Collections.singletonList(ref)
         );
 
-        KeyStore.PrivateKeyEntry keyEntry = loadPrivateKey(certStream, certPassword);
-        KeyInfo keyInfo = buildKeyInfo(fac, keyEntry);
-
-        DOMSignContext signContext =
-                new DOMSignContext(keyEntry.getPrivateKey(), document.getDocumentElement());
-
-        XMLSignature signature = fac.newXMLSignature(signedInfo, keyInfo);
-        signature.sign(signContext);
-
-        return transformToString(document);
-    }
-
-    // ===================== HELPERS =====================
-
-    private Document parseXml(String xml) throws Exception {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true); // 🔴 CRÍTICO para XML Signature
-        dbf.setIgnoringElementContentWhitespace(true);
-
-        DocumentBuilder db = dbf.newDocumentBuilder();
-        return db.parse(new InputSource(new StringReader(xml)));
-    }
-
-    private KeyStore.PrivateKeyEntry loadPrivateKey(InputStream certStream, String password)
-            throws Exception {
-
         KeyStore ks = KeyStore.getInstance("PKCS12");
-        ks.load(certStream, password.toCharArray());
-
+        ks.load(certStream, certPassword.toCharArray());
         String alias = ks.aliases().nextElement();
 
-        return (KeyStore.PrivateKeyEntry) ks.getEntry(
-                alias,
-                new KeyStore.PasswordProtection(password.toCharArray())
-        );
-    }
-
-    private KeyInfo buildKeyInfo(XMLSignatureFactory fac, KeyStore.PrivateKeyEntry keyEntry) {
+        KeyStore.PrivateKeyEntry keyEntry =
+                (KeyStore.PrivateKeyEntry) ks.getEntry(
+                        alias,
+                        new KeyStore.PasswordProtection(certPassword.toCharArray())
+                );
 
         X509Certificate cert = (X509Certificate) keyEntry.getCertificate();
 
         KeyInfoFactory kif = fac.getKeyInfoFactory();
-
-        List<Serializable> x509Content = new ArrayList<>();
+        List<Object> x509Content = new ArrayList<>();
         x509Content.add(cert);
-
         X509Data x509Data = kif.newX509Data(x509Content);
+        KeyInfo keyInfo = kif.newKeyInfo(Collections.singletonList(x509Data));
 
-        return kif.newKeyInfo(Collections.singletonList(x509Data));
-    }
+        DOMParser parser = new DOMParser();
+        parser.setPreserveWhitespace(false);
+        parser.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
 
-    private String transformToString(Document document) throws Exception {
+        XMLDocument document = parser.getDocument();
+        Element root = document.getDocumentElement();
+
+        DOMSignContext signContext =
+                new DOMSignContext(keyEntry.getPrivateKey(), root);
+
+        XMLSignature signature = fac.newXMLSignature(signedInfo, keyInfo);
+        signature.sign(signContext);
 
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        transformer.transform(new DOMSource(document), new StreamResult(output));
+        transformer.transform(new DOMSource(root), new StreamResult(output));
 
         return output.toString(StandardCharsets.UTF_8);
     }
