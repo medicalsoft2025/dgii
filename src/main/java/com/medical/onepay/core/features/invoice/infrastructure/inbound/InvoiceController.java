@@ -1,6 +1,7 @@
-package com.medical.onepay.core.invoice.infrastructure.inbound;
+package com.medical.onepay.core.features.invoice.infrastructure.inbound;
 
-import com.medical.onepay.core.invoice.application.usecase.EnviarFacturaUseCase;
+import com.medical.onepay.core.features.invoice.application.usecase.EnviarFacturaUseCase;
+import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,17 +17,17 @@ public class InvoiceController {
     private final EnviarFacturaUseCase enviarFacturaUseCase;
 
     @PostMapping("/{tenantId}")
-    public ResponseEntity<String> enviarFactura(
+    public ResponseEntity<DgiiFacturaResponse> enviarFactura(
             @PathVariable UUID tenantId,
             @RequestBody String facturaJson) {
         try {
-            String respuestaDgii = enviarFacturaUseCase.enviar(facturaJson, tenantId);
+            DgiiFacturaResponse respuestaDgii = enviarFacturaUseCase.execute(facturaJson, tenantId);
             return ResponseEntity.ok(respuestaDgii);
         } catch (Exception e) {
-            // En un caso real, se podría devolver un DTO de error más estructurado.
             e.printStackTrace();
+            // In a real case, a more structured error DTO could be returned.
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error procesando la factura: " + e.getMessage());
+                    .body(new DgiiFacturaResponse(null, "ERROR", e.getMessage()));
         }
     }
 }

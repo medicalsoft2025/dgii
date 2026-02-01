@@ -1,5 +1,6 @@
 package com.medical.onepay.core.invoice.application.usecase;
 
+import com.medical.onepay.core.features.invoice.application.usecase.EnviarFacturaUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

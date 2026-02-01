@@ -1,4 +1,4 @@
-package com.medical.onepay.core.invoice.application.usecase;
+package com.medical.onepay.core.features.invoice.application.usecase;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,7 +12,9 @@ import com.medical.onepay.core.dgii.ecf.v31.ECF;
 import com.medical.onepay.core.features.auth.application.usecase.GetTokenDgiiUseCase;
 import com.medical.onepay.core.features.digitalCertificates.domain.model.DigitalCertificateEntity;
 import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;
-import com.medical.onepay.core.invoice.infrastructure.adapter.outbound.DgiiInvoiceHttpClientAdapter;
+import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePort;
+import com.medical.onepay.core.features.invoice.application.ports.EnviarFacturaPort;
+import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Marshaller;
@@ -27,21 +29,18 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class EnviarFacturaUseCase {
+public class EnviarFacturaUseCase implements EnviarFacturaPort {
 
     private final DigitalCertificateRepository digitalCertificateRepository;
     private final XmlSignerAdapter xmlSignerAdapter;
-    private final DgiiInvoiceHttpClientAdapter dgiiInvoiceHttpClientAdapter;
+    private final DgiiInvoicePort dgiiInvoicePort;
     private final GetTokenDgiiUseCase getTokenDgiiUseCase;
     private final DgiiApiProperties dgiiApiProperties;
     private final XmlValidatorAdapter xmlValidator;
 
-    /**
-     * Orquesta el proceso completo de envío de una factura electrónica a la DGII.
-     */
-    public String enviar(String facturaJson, UUID tenantId) {
+    @Override
+    public DgiiFacturaResponse execute(String facturaJson, UUID tenantId) {
         try {
-            // Paso 1: JSON -> Objeto
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper.registerModule(new JaxbAnnotationModule());
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -52,13 +51,11 @@ public class EnviarFacturaUseCase {
             JsonNode ecfNode = rootNode.path("ECF");
             ECF ecf = objectMapper.treeToValue(ecfNode, ECF.class);
 
-            // Paso 2: Objeto -> XML
             String xmlSinFirmar = convertirObjetoAXml(ecf);
             if (xmlSinFirmar == null) {
                 throw new RuntimeException("No se pudo convertir el objeto a XML.");
             }
 
-            // Paso 3: Firmar el XML
             DigitalCertificateEntity certificate = digitalCertificateRepository.findByTenantId(tenantId)
                     .orElseThrow(() -> new RuntimeException("No se encontró el certificado para el tenant: " + tenantId));
 
@@ -67,19 +64,13 @@ public class EnviarFacturaUseCase {
                 xmlFirmado = xmlSignerAdapter.sign(xmlSinFirmar, certStream, certificate.getPassword());
             }
 
-            // Paso 3.5: Validar XML Firmado contra XSD
-            // Validamos DESPUÉS de firmar porque el XSD exige la presencia de la etiqueta <Signature>.
             String xsdPath = ResourceUtils.getFile("classpath:xsd/ecf31/e-CF 31 v.1.0.xsd").getAbsolutePath();
             xmlValidator.validate(xmlFirmado, xsdPath);
 
-            // Paso 4: Obtener Token de Autenticación
             String token = getTokenDgiiUseCase.obtenerToken(tenantId).getToken();
 
-            // Paso 5: Enviar a la DGII
             String url = dgiiApiProperties.getBaseUrl() + dgiiApiProperties.getEndpoints().getInvoice().getSend();
-            String respuestaDgii = dgiiInvoiceHttpClientAdapter.send(xmlFirmado, url, token);
-
-            return respuestaDgii;
+            return dgiiInvoicePort.send(xmlFirmado, url, token);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -93,8 +84,6 @@ public class EnviarFacturaUseCase {
             Marshaller marshaller = context.createMarshaller();
             
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-            // NOTA: JAXB_FRAGMENT se quita para que el validador reciba un XML completo.
-            // marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
 
             StringWriter sw = new StringWriter();
             marshaller.marshal(objetoJaxb, sw);
