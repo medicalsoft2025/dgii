@@ -1,7 +1,7 @@
-package com.medical.onepay.core.auth.infrastructure.inbound;
+package com.medical.onepay.core.features.auth.infrastructure.inbound;
 
-import com.medical.onepay.core.auth.application.usecase.GetTokenDgiiUseCase;
-import com.medical.onepay.core.auth.infrastructure.dto.DgiiTokenResponse;
+import com.medical.onepay.core.features.auth.application.usecase.GetTokenDgiiUseCase;
+import com.medical.onepay.core.features.auth.infrastructure.dto.DgiiTokenResponse;
 import com.medical.onepay.shared.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

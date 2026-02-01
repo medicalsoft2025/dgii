@@ -1,4 +1,4 @@
-package com.medical.onepay.core.auth.infrastructure.adapter.outbound;
+package com.medical.onepay.core.features.auth.infrastructure.adapter.outbound;
 
 import java.io.File;
 
@@ -12,7 +12,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.stereotype.Service;
 
-import com.medical.onepay.core.auth.application.ports.out.DgiiSenderPort;
+import com.medical.onepay.core.features.auth.application.ports.out.DgiiSenderPort;
 
 @Service
 public class DgiiHttpClientAdapter implements DgiiSenderPort {

@@ -1,7 +1,7 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.0.0-SNAPSHOT'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '4.0.0-SNAPSHOT'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.medical'
@@ -9,20 +9,22 @@ version = '0.0.1-SNAPSHOT'
 description = 'integration to onepay'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    // Configuración específica para las herramientas de JAXB
+    jaxb
 }
 
 repositories {
-	mavenCentral()
-	maven { url = 'https://repo.spring.io/snapshot' }
+    mavenCentral()
+    maven { url = 'https://repo.spring.io/snapshot' }
 }
 
 dependencies {
@@ -40,6 +42,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    // Módulo de Jackson para entender anotaciones JAXB
+    implementation 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations'
+
 
     // Apache HttpClient (versiones compatibles)
     implementation 'org.apache.httpcomponents:httpclient:4.5.14'
@@ -49,6 +54,14 @@ dependencies {
     // XML Parser Oracle (OBLIGATORIO para DGII)
     implementation 'com.oracle.database.xml:xmlparserv2:21.8.0.0'
 
+    // Dependencias de JAXB (necesarias para Java 9+)
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
+    implementation 'com.sun.xml.bind:jaxb-impl:4.0.0'
+    implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.0'
+
+    // Dependencias para la herramienta de generación de código JAXB
+    jaxb 'com.sun.xml.bind:jaxb-xjc:4.0.0'
+    jaxb 'com.sun.xml.bind:jaxb-impl:4.0.0'
 
 
     // MapStruct
@@ -70,8 +83,35 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 }
 
+// Tarea personalizada para generar clases desde XSD con JAXB
+task genJaxb {
+    ext.sourcesDir = file("${buildDir}/generated-sources/jaxb")
+    ext.schemaDir = file("src/main/resources/xsd/ecf31")
 
+    outputs.dir sourcesDir
+
+    doFirst {
+        // Forzar la limpieza del directorio de salida antes de generar
+        delete(sourcesDir)
+    }
+
+    doLast {
+        project.ant {
+            taskdef name: 'xjc', classname: 'com.sun.tools.xjc.XJCTask',
+                    classpath: configurations.jaxb.asPath
+            mkdir(dir: sourcesDir)
+            xjc(destdir: sourcesDir, schema: "${schemaDir}/e-CF 31 v.1.0.xsd") {
+                arg(value: "-p")
+                arg(value: "com.medical.onepay.core.dgii.ecf.v31")
+                produces(dir: sourcesDir, includes: "**/*.java")
+            }
+        }
+    }
+}
+
+// Añadir las clases generadas al conjunto de fuentes de Java
+sourceSets.main.java.srcDir file("${buildDir}/generated-sources/jaxb")
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }

@@ -1,0 +1,17 @@
+<jaxb:bindings version="3.0"
+               xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+               xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <jaxb:bindings schemaLocation="e-CF 31 v.1.0.xsd" node="/xs:schema">
+
+        <!--
+            Adaptador global para todos los tipos 'xs:decimal'.
+            Esto asegura que se use nuestra clase BigDecimalAdapter para el formateo.
+        -->
+        <jaxb:globalBindings>
+            <jaxb:javaType name="java.math.BigDecimal" xmlType="xs:decimal"
+                           adapter="com.medical.onepay.core.common.infrastructure.jaxb.BigDecimalAdapter" />
+        </jaxb:globalBindings>
+
+    </jaxb:bindings>
+</jaxb:bindings>

@@ -1,8 +1,8 @@
-package com.medical.onepay.core.auth.application.usecase;
+package com.medical.onepay.core.features.auth.application.usecase;
 
-import com.medical.onepay.core.auth.application.ports.out.DgiiAuthPort;
-import com.medical.onepay.core.auth.infrastructure.adapter.outbound.DgiiHttpClientAdapter;
-import com.medical.onepay.core.auth.infrastructure.dto.DgiiTokenResponse;
+import com.medical.onepay.core.features.auth.application.ports.out.DgiiAuthPort;
+import com.medical.onepay.core.features.auth.infrastructure.adapter.outbound.DgiiHttpClientAdapter;
+import com.medical.onepay.core.features.auth.infrastructure.dto.DgiiTokenResponse;
 import com.medical.onepay.core.common.infrastructure.crypto.XmlSignerAdapter;
 import com.medical.onepay.core.features.digitalCertificates.domain.model.DigitalCertificateEntity;
 import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;

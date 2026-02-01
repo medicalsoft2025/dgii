@@ -1,4 +1,4 @@
-package com.medical.onepay.core.auth.infrastructure.dto;
+package com.medical.onepay.core.features.auth.infrastructure.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
