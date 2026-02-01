@@ -16,13 +16,7 @@ public class DgiiApiProperties {
     public static class Endpoints {
         private Auth auth = new Auth();
         private Invoice invoice = new Invoice();
-        private Summary summary = new Summary();
-        private Inquiry inquiry = new Inquiry();
-        private Commercial commercial = new Commercial();
         private Status status = new Status();
-        private Tracking tracking = new Tracking();
-        private Directory directory = new Directory();
-        private String voidOperation;
         private Service service = new Service();
     }
 
@@ -37,15 +31,6 @@ public class DgiiApiProperties {
         private String send;
     }
 
-    @Data
-    public static class Summary {
-        private String send;
-    }
-
-    @Data
-    public static class Inquiry {
-        private String invoiceSummary;
-    }
 
     @Data
     public static class Commercial {
@@ -58,16 +43,7 @@ public class DgiiApiProperties {
         private String inquiry;
     }
 
-    @Data
-    public static class Tracking {
-        private String all;
-    }
 
-    @Data
-    public static class Directory {
-        private String test;
-        private String prod;
-    }
 
     @Data
     public static class Service {

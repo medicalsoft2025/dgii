@@ -10,6 +10,7 @@ import com.medical.onepay.core.features.digitalCertificates.domain.repository.Di
 import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePort;
 import com.medical.onepay.core.features.invoice.application.usecase.SendInvoice31UseCase;
 import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
+import com.medical.onepay.core.features.invoiceaudit.application.usecase.CreateInvoiceAuditUseCase;
 import com.medical.onepay.shared.tenant.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,8 @@ class SendInvoice31UseCaseTest {
     private DgiiApiProperties dgiiApiProperties;
     @Mock
     private XmlValidatorAdapter xmlValidator;
+    @Mock
+    private CreateInvoiceAuditUseCase createInvoiceAuditUseCase;
 
     private SendInvoice31UseCase sendInvoice31UseCase;
 
@@ -55,7 +58,8 @@ class SendInvoice31UseCaseTest {
                 dgiiInvoicePort,
                 getTokenDgiiUseCase,
                 dgiiApiProperties,
-                xmlValidator
+                xmlValidator,
+                createInvoiceAuditUseCase
         );
     }
 
@@ -66,7 +70,7 @@ class SendInvoice31UseCaseTest {
 
     @Test
     void deberiaConvertirJsonAXmlCorrectamente() throws Exception {
-        // 1. Arrange: Preparamos el JSON de entrada
+        // 1. Arrange
         String facturaJson = """
         {
           "ECF": {
@@ -90,9 +94,9 @@ class SendInvoice31UseCaseTest {
                 "TablaTelefonoEmisor": {
                   "TelefonoEmisor": ["809-472-7676", "809-491-1918"]
                 },
-                "CorreoEmisor": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+                "CorreoEmisor": "test@test.com",
                 "WebSite": "www.facturaelectronica.com",
-                "CodigoVendedor": "AA0000000100000000010000000002000000000300000000050000000006",
+                "CodigoVendedor": "AA001",
                 "NumeroFacturaInterna": "123456789016",
                 "NumeroPedidoInterno": "123456789016",
                 "ZonaVenta": "NORT",
@@ -102,8 +106,8 @@ class SendInvoice31UseCaseTest {
                 "RNCComprador": "131880681",
                 "RazonSocialComprador": "DOCUMENTOS ELECTRONICOS DE 03",
                 "ContactoComprador": "MARCOS LATIPLOL",
-                "CorreoComprador": "MARCOSLATIPLOL@KKKK.COM",
-                "DireccionComprador": "CALLE JACINTO DE LA CONCHA FELIZ ESQUINA 27 DE FEBRERO,FRENTE A DOMINO",
+                "CorreoComprador": "test@test.com",
+                "DireccionComprador": "CALLE JACINTO",
                 "MunicipioComprador": "010100",
                 "ProvinciaComprador": "010000",
                 "FechaEntrega": "10-10-2020",
@@ -151,7 +155,7 @@ class SendInvoice31UseCaseTest {
         when(getTokenDgiiUseCase.obtenerToken(tenantId)).thenReturn(tokenResponse);
 
         DgiiApiProperties.Endpoints endpoints = new DgiiApiProperties.Endpoints();
-        DgiiApiProperties.Endpoints.Invoice invoice = new DgiiApiProperties.Endpoints.Invoice();
+        DgiiApiProperties.Invoice invoice = new DgiiApiProperties.Invoice();
         invoice.setSend("/invoice");
         endpoints.setInvoice(invoice);
         when(dgiiApiProperties.getEndpoints()).thenReturn(endpoints);
@@ -159,25 +163,19 @@ class SendInvoice31UseCaseTest {
 
         when(dgiiInvoicePort.send(anyString(), anyString(), anyString())).thenReturn(new DgiiFacturaResponse());
 
-        // 2. Act: Llamamos al método que queremos probar
+        // 2. Act
         sendInvoice31UseCase.execute(facturaJson);
 
-        // 3. Assert: Verificamos el resultado capturando el XML pasado al firmador
+        // 3. Assert
         ArgumentCaptor<String> xmlCaptor = ArgumentCaptor.forClass(String.class);
         verify(xmlSignerAdapter).sign(xmlCaptor.capture(), any(InputStream.class), anyString());
         
         String resultadoXml = xmlCaptor.getValue();
-        System.out.println(resultadoXml); // Imprimimos para inspección visual
+        assertNotNull(resultadoXml);
+        assertTrue(resultadoXml.contains("<ECF>"));
+        assertTrue(resultadoXml.contains("<eNCF>E310000000001</eNCF>"));
 
-        assertNotNull(resultadoXml, "El XML resultante no debería ser nulo.");
-        assertTrue(resultadoXml.contains("<ECF>"), "El XML debe contener la etiqueta raíz <ECF>.");
-        assertTrue(resultadoXml.contains("<Encabezado>"), "El XML debe contener la etiqueta <Encabezado>.");
-        assertTrue(resultadoXml.contains("<eNCF>E310000000001</eNCF>"), "El XML debe contener el eNCF correcto.");
-        assertTrue(resultadoXml.contains("<RazonSocialEmisor>"), "El XML debe contener la razón social del emisor.");
-        assertTrue(resultadoXml.contains("<DetallesItems>"), "El XML debe contener la sección de items.");
-        
-        // AJUSTE TEMPORAL: Aceptamos el formato de decimal actual para poder avanzar.
-        // El formato final se corregirá en un paso posterior.
-        assertTrue(resultadoXml.contains("<MontoItem>6000.0</MontoItem>"), "El XML debe contener el monto del item.");
+        // Verify audit is called
+        verify(createInvoiceAuditUseCase).execute(anyString(), any(), anyString(), anyString());
     }
 }

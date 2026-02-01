@@ -9,6 +9,7 @@ import com.medical.onepay.core.dgii.ecf.v31.ECF;
 import com.medical.onepay.core.features.auth.application.usecase.GetTokenDgiiUseCase;
 import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;
 import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePort;
+import com.medical.onepay.core.features.invoiceaudit.application.usecase.CreateInvoiceAuditUseCase;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,8 +21,9 @@ public class SendInvoice31UseCase extends AbstractSendInvoiceUseCase {
             DgiiInvoicePort dgiiInvoicePort,
             GetTokenDgiiUseCase getTokenDgiiUseCase,
             DgiiApiProperties dgiiApiProperties,
-            XmlValidatorAdapter xmlValidator) {
-        super(digitalCertificateRepository, xmlSignerAdapter, dgiiInvoicePort, getTokenDgiiUseCase, dgiiApiProperties, xmlValidator);
+            XmlValidatorAdapter xmlValidator,
+            CreateInvoiceAuditUseCase createInvoiceAuditUseCase) {
+        super(digitalCertificateRepository, xmlSignerAdapter, dgiiInvoicePort, getTokenDgiiUseCase, dgiiApiProperties, xmlValidator, createInvoiceAuditUseCase);
     }
 
     @Override
