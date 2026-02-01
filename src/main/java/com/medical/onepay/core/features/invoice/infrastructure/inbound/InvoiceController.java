@@ -1,27 +1,25 @@
 package com.medical.onepay.core.features.invoice.infrastructure.inbound;
 
-import com.medical.onepay.core.features.invoice.application.usecase.EnviarFacturaUseCase;
+import com.medical.onepay.core.features.invoice.application.usecase.SendInvoice;
+import com.medical.onepay.core.features.invoice.application.usecase.SendInvoice31UseCase;
 import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
 public class InvoiceController {
 
-    private final EnviarFacturaUseCase enviarFacturaUseCase;
+    private final SendInvoice sendInvoice;
 
-    @PostMapping("/{tenantId}")
+    @PostMapping
     public ResponseEntity<DgiiFacturaResponse> enviarFactura(
-            @PathVariable UUID tenantId,
             @RequestBody String facturaJson) {
         try {
-            DgiiFacturaResponse respuestaDgii = enviarFacturaUseCase.execute(facturaJson, tenantId);
+            DgiiFacturaResponse respuestaDgii = sendInvoice.execute(facturaJson);
             return ResponseEntity.ok(respuestaDgii);
         } catch (Exception e) {
             e.printStackTrace();

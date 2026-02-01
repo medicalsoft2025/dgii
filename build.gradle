@@ -86,28 +86,53 @@ dependencies {
 // Tarea personalizada para generar clases desde XSD con JAXB
 task genJaxb {
     ext.sourcesDir = file("${buildDir}/generated-sources/jaxb")
-    ext.schemaDir = file("src/main/resources/xsd/ecf31")
+    ext.xsdDir31 = file("src/main/resources/xsd/ecf31")
+    ext.xsdDir32 = file("src/main/resources/xsd/ecf32")
+    ext.xsdDir33 = file("src/main/resources/xsd/ecf33")
+    ext.xsdDir34 = file("src/main/resources/xsd/ecf34")
 
     outputs.dir sourcesDir
 
     doFirst {
         // Forzar la limpieza del directorio de salida antes de generar
         delete(sourcesDir)
+        mkdir(sourcesDir)
     }
 
     doLast {
         project.ant {
             taskdef name: 'xjc', classname: 'com.sun.tools.xjc.XJCTask',
                     classpath: configurations.jaxb.asPath
-            mkdir(dir: sourcesDir)
-            xjc(destdir: sourcesDir, schema: "${schemaDir}/e-CF 31 v.1.0.xsd") {
+            
+            echo(message: "Generando clases JAXB para ECF v31...")
+            xjc(destdir: sourcesDir, schema: "${xsdDir31}/e-CF 31 v.1.0.xsd") {
                 arg(value: "-p")
                 arg(value: "com.medical.onepay.core.dgii.ecf.v31")
-                produces(dir: sourcesDir, includes: "**/*.java")
+            }
+
+            echo(message: "Generando clases JAXB para ECF v32...")
+            xjc(destdir: sourcesDir, schema: "${xsdDir32}/e-CF 32 v.1.0.xsd") {
+                arg(value: "-p")
+                arg(value: "com.medical.onepay.core.dgii.ecf.v32")
+            }
+
+            echo(message: "Generando clases JAXB para ECF v33...")
+            xjc(destdir: sourcesDir, schema: "${xsdDir33}/e-CF 33 v.1.0.xsd") {
+                arg(value: "-p")
+                arg(value: "com.medical.onepay.core.dgii.ecf.v33")
+            }
+
+            echo(message: "Generando clases JAXB para ECF v34...")
+            xjc(destdir: sourcesDir, schema: "${xsdDir34}/e-CF 34 v.1.0.xsd") {
+                arg(value: "-p")
+                arg(value: "com.medical.onepay.core.dgii.ecf.v34")
             }
         }
     }
 }
+
+// Asegurar que genJaxb se ejecute antes de compilar Java
+compileJava.dependsOn genJaxb
 
 // Añadir las clases generadas al conjunto de fuentes de Java
 sourceSets.main.java.srcDir file("${buildDir}/generated-sources/jaxb")

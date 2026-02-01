@@ -1,25 +1,71 @@
 package com.medical.onepay.core.invoice.application.usecase;
 
-import com.medical.onepay.core.features.invoice.application.usecase.EnviarFacturaUseCase;
+import com.medical.onepay.config.dgii.DgiiApiProperties;
+import com.medical.onepay.core.common.infrastructure.crypto.XmlSignerAdapter;
+import com.medical.onepay.core.common.infrastructure.validation.XmlValidatorAdapter;
+import com.medical.onepay.core.features.auth.application.usecase.GetTokenDgiiUseCase;
+import com.medical.onepay.core.features.auth.infrastructure.dto.DgiiTokenResponse;
+import com.medical.onepay.core.features.digitalCertificates.domain.model.DigitalCertificateEntity;
+import com.medical.onepay.core.features.digitalCertificates.domain.repository.DigitalCertificateRepository;
+import com.medical.onepay.core.features.invoice.application.ports.DgiiInvoicePort;
+import com.medical.onepay.core.features.invoice.application.usecase.SendInvoice31UseCase;
+import com.medical.onepay.core.features.invoice.infrastructure.dto.DgiiFacturaResponse;
+import com.medical.onepay.shared.tenant.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.InputStream;
+import java.util.Optional;
 import java.util.UUID;
 
-class EnviarFacturaUseCaseTest {
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
-    private EnviarFacturaUseCase enviarFacturaUseCase;
+@ExtendWith(MockitoExtension.class)
+class SendInvoice31UseCaseTest {
+
+    @Mock
+    private DigitalCertificateRepository digitalCertificateRepository;
+    @Mock
+    private XmlSignerAdapter xmlSignerAdapter;
+    @Mock
+    private DgiiInvoicePort dgiiInvoicePort;
+    @Mock
+    private GetTokenDgiiUseCase getTokenDgiiUseCase;
+    @Mock
+    private DgiiApiProperties dgiiApiProperties;
+    @Mock
+    private XmlValidatorAdapter xmlValidator;
+
+    private SendInvoice31UseCase sendInvoice31UseCase;
 
     @BeforeEach
     void setUp() {
-        // Para este test unitario, no necesitamos las dependencias reales.
-        // Nos enfocamos solo en la lógica de conversión dentro del UseCase.
-        enviarFacturaUseCase = new EnviarFacturaUseCase(null, null);
+        sendInvoice31UseCase = new SendInvoice31UseCase(
+                digitalCertificateRepository,
+                xmlSignerAdapter,
+                dgiiInvoicePort,
+                getTokenDgiiUseCase,
+                dgiiApiProperties,
+                xmlValidator
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     @Test
-    void deberiaConvertirJsonAXmlCorrectamente() {
+    void deberiaConvertirJsonAXmlCorrectamente() throws Exception {
         // 1. Arrange: Preparamos el JSON de entrada
         String facturaJson = """
         {
@@ -91,11 +137,36 @@ class EnviarFacturaUseCaseTest {
         }
         """;
 
-        // 2. Act: Llamamos al método que queremos probar
-        // Pasamos un UUID aleatorio porque no se usará en este test
-        String resultadoXml = enviarFacturaUseCase.enviar(facturaJson, UUID.randomUUID());
+        UUID tenantId = UUID.randomUUID();
+        TenantContext.setTenantId(tenantId);
 
-        // 3. Assert: Verificamos el resultado
+        DigitalCertificateEntity certificate = new DigitalCertificateEntity();
+        certificate.setCertificateData(new byte[0]);
+        certificate.setPassword("password");
+        when(digitalCertificateRepository.findByTenantId(tenantId)).thenReturn(Optional.of(certificate));
+
+        when(xmlSignerAdapter.sign(anyString(), any(InputStream.class), anyString())).thenReturn("<xml>firmado</xml>");
+        
+        DgiiTokenResponse tokenResponse = new DgiiTokenResponse("token", null, null);
+        when(getTokenDgiiUseCase.obtenerToken(tenantId)).thenReturn(tokenResponse);
+
+        DgiiApiProperties.Endpoints endpoints = new DgiiApiProperties.Endpoints();
+        DgiiApiProperties.Endpoints.Invoice invoice = new DgiiApiProperties.Endpoints.Invoice();
+        invoice.setSend("/invoice");
+        endpoints.setInvoice(invoice);
+        when(dgiiApiProperties.getEndpoints()).thenReturn(endpoints);
+        when(dgiiApiProperties.getBaseUrl()).thenReturn("http://localhost");
+
+        when(dgiiInvoicePort.send(anyString(), anyString(), anyString())).thenReturn(new DgiiFacturaResponse());
+
+        // 2. Act: Llamamos al método que queremos probar
+        sendInvoice31UseCase.execute(facturaJson);
+
+        // 3. Assert: Verificamos el resultado capturando el XML pasado al firmador
+        ArgumentCaptor<String> xmlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(xmlSignerAdapter).sign(xmlCaptor.capture(), any(InputStream.class), anyString());
+        
+        String resultadoXml = xmlCaptor.getValue();
         System.out.println(resultadoXml); // Imprimimos para inspección visual
 
         assertNotNull(resultadoXml, "El XML resultante no debería ser nulo.");
