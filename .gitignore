@@ -19,6 +19,7 @@ replay_pid*
 
 build/
 out/
+!src/main/java/**/out/
 !gradle/wrapper/gradle-wrapper.jar
 
 # Ignore Gradle GUI config

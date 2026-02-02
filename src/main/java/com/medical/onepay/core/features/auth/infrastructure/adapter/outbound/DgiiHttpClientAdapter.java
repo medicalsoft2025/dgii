@@ -12,7 +12,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.stereotype.Service;
 
-import com.medical.onepay.core.features.auth.application.ports.out.DgiiSenderPort;
 
 @Service
 public class DgiiHttpClientAdapter implements DgiiSenderPort {
