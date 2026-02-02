@@ -1,0 +1,18 @@
+FROM gradle:8.8.0-jdk21 AS builder
+
+WORKDIR /home/gradle/src
+
+COPY --chown=gradle:gradle . .
+
+RUN ./gradlew build --no-daemon
+
+
+FROM eclipse-temurin:21-jre-jammy
+
+WORKDIR /app
+
+COPY --from=builder /home/gradle/src/build/libs/*.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-Dspring.profiles.active=dev", "-jar", "app.jar"]

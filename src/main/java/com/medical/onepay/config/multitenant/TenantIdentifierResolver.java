@@ -17,8 +17,6 @@ public class TenantIdentifierResolver implements CurrentTenantIdentifierResolver
         if (TenantContext.hasTenant()) {
             return TenantContext.getTenantId();
         }
-        // Si no hay un tenant en el contexto, devolvemos un ID por defecto.
-        // Esto es crucial para que Hibernate pueda inicializarse y para queries que no son tenant-specific.
         return DEFAULT_TENANT_ID;
     }
 

@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -149,7 +150,7 @@ class SendInvoice31UseCaseTest {
         certificate.setPassword("password");
         when(digitalCertificateRepository.findByTenantId(tenantId)).thenReturn(Optional.of(certificate));
 
-        when(xmlSignerAdapter.sign(anyString(), any(InputStream.class), anyString())).thenReturn("<xml>firmado</xml>");
+        when(xmlSignerAdapter.sign(anyString(), any(InputStream.class), anyString())).thenReturn("<xml><eNCF>E310000000001</eNCF></xml>");
         
         DgiiTokenResponse tokenResponse = new DgiiTokenResponse("token", null, null);
         when(getTokenDgiiUseCase.obtenerToken(tenantId)).thenReturn(tokenResponse);
@@ -176,6 +177,6 @@ class SendInvoice31UseCaseTest {
         assertTrue(resultadoXml.contains("<eNCF>E310000000001</eNCF>"));
 
         // Verify audit is called
-        verify(createInvoiceAuditUseCase).execute(anyString(), any(), anyString(), anyString());
+        verify(createInvoiceAuditUseCase).execute(anyString(), anyString(), anyString(), anyString(), nullable(String.class));
     }
 }

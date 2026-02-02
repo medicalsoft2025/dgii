@@ -72,3 +72,6 @@ logs/
 /.gradle
 /.gradle/9.1.0/checksums
 /.gradle/9.1.0/checksums
+
+##Docker
+dockerfile.dev
